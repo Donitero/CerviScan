@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Streamlit Dashboard",
+      "runtimeExecutable": "streamlit",
+      "runtimeArgs": ["run", "app.py"],
+      "port": 8501
+    },
+    {
+      "name": "Modal Serve (local dev)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "modal", "serve", "modal_deploy.py"],
+      "port": 8081
+    }
+  ]
+}

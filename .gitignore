@@ -15,10 +15,8 @@ venv/
 env/
 .venv/
 .env/
-.env
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *~
@@ -59,3 +57,8 @@ htmlcov/
 
 # Modal
 .modal/
+
+# Raw trial data folders
+trial_*/
+config.bat
+node_modules
