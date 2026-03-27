@@ -1,8 +1,10 @@
 """
-Cervical Cell Classifier — SIPaKMeD 5-class model.
+MODULE 2 — CIN Lesion Detector (Osborn)
+========================================
+EfficientNetV2-S fine-tuned on SIPaKMeD for 5-class cervical cell classification
+with CIN grading aligned to pitch deck Slide 8 triage colours.
 
-Output contract (see docs/OUTPUT_CONTRACTS.md — CONTRACT 1):
-    CervicalClassifier.predict(image_tensor) -> dict
+Output contract → docs/OUTPUT_CONTRACTS.md § Contract 2A
 """
 
 from __future__ import annotations
@@ -14,72 +16,67 @@ from typing import Dict, Any
 
 
 # ---------------------------------------------------------------------------
-# Class metadata — drives UI colours and clinical copy
+# Class metadata — drives CIN grading + pitch-deck triage colours
 # ---------------------------------------------------------------------------
 
 CLASS_META: Dict[str, Dict[str, Any]] = {
     "Superficial-Intermediate": {
-        "category": "Normal",
-        "action": "Routine screening. No immediate follow-up required.",
-        "urgency": "low",
-        "description": (
-            "Superficial and intermediate squamous cells are mature, well-differentiated "
-            "cells found on the upper layers of healthy cervical epithelium."
-        ),
-        "color": "#4CAF50",  # green
+        "category":     "Normal",
+        "cin_grade":    "No CIN",
+        "triage_color": "green",
+        "action":       "Routine screening. No immediate follow-up required.",
+        "urgency":      "low",
+        "description":  "Mature squamous cells from the upper epithelial layers. Normal finding.",
+        "color":        "#4CAF50",
     },
     "Parabasal": {
-        "category": "Normal",
-        "action": "Routine screening. Correlate with hormonal status.",
-        "urgency": "low",
-        "description": (
-            "Parabasal cells originate from the lower epithelial layers and are commonly "
-            "seen in post-menopausal or atrophic cervical smears."
-        ),
-        "color": "#8BC34A",  # light green
+        "category":     "Normal",
+        "cin_grade":    "No CIN",
+        "triage_color": "green",
+        "action":       "Routine screening. Correlate with hormonal status.",
+        "urgency":      "low",
+        "description":  "Parabasal cells — common in atrophic/post-menopausal smears. Usually benign.",
+        "color":        "#8BC34A",
     },
     "Koilocyte": {
-        "category": "Benign",
-        "action": "HPV-associated changes noted. Recommend repeat smear in 6–12 months.",
-        "urgency": "moderate",
-        "description": (
-            "Koilocytes exhibit perinuclear halos consistent with HPV cytopathic effect. "
-            "These changes are benign but warrant monitoring for progression."
-        ),
-        "color": "#FF9800",  # orange
+        "category":     "Benign",
+        "cin_grade":    "CIN1 (low-grade)",
+        "triage_color": "amber",
+        "action":       "HPV cytopathic effect noted. Repeat smear in 6–12 months; consider HPV co-test.",
+        "urgency":      "moderate",
+        "description":  "Koilocytes show perinuclear halos consistent with active HPV infection (CIN1 equivalent).",
+        "color":        "#FF9800",
     },
     "Dyskeratocyte": {
-        "category": "Benign",
-        "action": "Abnormal keratinisation detected. Colposcopy referral recommended.",
-        "urgency": "moderate",
-        "description": (
-            "Dyskeratocytes show premature or abnormal keratinisation. While often benign, "
-            "colposcopic evaluation is advised to exclude low-grade dysplasia."
-        ),
-        "color": "#FF5722",  # deep orange
+        "category":     "Benign",
+        "cin_grade":    "CIN1 (low-grade)",
+        "triage_color": "amber",
+        "action":       "Abnormal keratinisation detected. Colposcopy referral recommended.",
+        "urgency":      "moderate",
+        "description":  "Dyskeratocytes indicate premature keratinisation; may represent low-grade SIL.",
+        "color":        "#FF5722",
     },
     "Metaplastic": {
-        "category": "Abnormal",
-        "action": "Atypical metaplastic changes. Urgent colposcopy and biopsy advised.",
-        "urgency": "high",
-        "description": (
-            "Metaplastic cells from the transformation zone showing atypical features may "
-            "indicate squamous intraepithelial lesion (SIL). Prompt clinical evaluation required."
-        ),
-        "color": "#F44336",  # red
+        "category":     "Abnormal",
+        "cin_grade":    "CIN2-3 (high-grade)",
+        "triage_color": "red",
+        "action":       "High-grade changes suspected. Urgent colposcopy and directed biopsy required.",
+        "urgency":      "high",
+        "description":  "Atypical metaplastic cells from the transformation zone — high-grade SIL cannot be excluded.",
+        "color":        "#F44336",
     },
 }
 
-CLASS_NAMES = list(CLASS_META.keys())  # order must match training label encoding
-NUM_CLASSES = len(CLASS_NAMES)
+CLASS_NAMES = list(CLASS_META.keys())
+NUM_CLASSES  = len(CLASS_NAMES)
 
 
 # ---------------------------------------------------------------------------
-# Model architecture
+# Model
 # ---------------------------------------------------------------------------
 
 class CervicalClassifier(nn.Module):
-    """EfficientNetV2-S fine-tuned on SIPaKMeD for 5-class cervical classification."""
+    """EfficientNetV2-S fine-tuned on SIPaKMeD (5-class CIN classification)."""
 
     def __init__(self, pretrained: bool = False, checkpoint_path: str | None = None):
         super().__init__()
@@ -88,47 +85,54 @@ class CervicalClassifier(nn.Module):
             pretrained=pretrained,
             num_classes=NUM_CLASSES,
         )
-
         if checkpoint_path:
             state = torch.load(checkpoint_path, map_location="cpu")
-            # support both raw state-dicts and checkpoint dicts
-            sd = state.get("model_state_dict", state)
-            self.backbone.load_state_dict(sd)
+            self.backbone.load_state_dict(state.get("model_state_dict", state))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.backbone(x)
 
     # ------------------------------------------------------------------
-    # Inference API — returns OUTPUT CONTRACT 1
+    # Inference API — CONTRACT 2A
     # ------------------------------------------------------------------
 
     @torch.no_grad()
     def predict(self, image_tensor: torch.Tensor) -> Dict[str, Any]:
         """
-        Args:
-            image_tensor: float32 tensor of shape (1, 3, 224, 224),
-                          normalised with ImageNet mean/std.
+        Args
+        ----
+        image_tensor : torch.Tensor  shape (1, 3, 224, 224), ImageNet-normalised.
 
-        Returns:
-            dict matching CONTRACT 1 in docs/OUTPUT_CONTRACTS.md.
+        Returns (CONTRACT 2A)
+        ----------------------
+        {
+            "class_name":    str,
+            "category":      "Normal" | "Benign" | "Abnormal",
+            "confidence":    float 0-1,
+            "all_probs":     {class_name: float, ...},
+            "cin_grade":     "No CIN" | "CIN1 (low-grade)" | "CIN2-3 (high-grade)",
+            "triage_color":  "green" | "amber" | "red",
+            "action":        str,
+            "urgency":       "low" | "moderate" | "high",
+            "description":   str,
+            "color":         str hex,
+        }
         """
         self.eval()
-        logits = self.forward(image_tensor)           # (1, 5)
-        probs = torch.softmax(logits, dim=1)[0]       # (5,)
-
-        pred_idx = int(probs.argmax())
-        class_name = CLASS_NAMES[pred_idx]
-        meta = CLASS_META[class_name]
+        probs = torch.softmax(self.forward(image_tensor), dim=1)[0]
+        idx   = int(probs.argmax())
+        name  = CLASS_NAMES[idx]
+        meta  = CLASS_META[name]
 
         return {
-            "class_name": class_name,
-            "category": meta["category"],
-            "confidence": float(probs[pred_idx]),
-            "all_probs": {
-                name: float(probs[i]) for i, name in enumerate(CLASS_NAMES)
-            },
-            "action": meta["action"],
-            "urgency": meta["urgency"],
-            "description": meta["description"],
-            "color": meta["color"],
+            "class_name":   name,
+            "category":     meta["category"],
+            "confidence":   float(probs[idx]),
+            "all_probs":    {n: float(probs[i]) for i, n in enumerate(CLASS_NAMES)},
+            "cin_grade":    meta["cin_grade"],
+            "triage_color": meta["triage_color"],
+            "action":       meta["action"],
+            "urgency":      meta["urgency"],
+            "description":  meta["description"],
+            "color":        meta["color"],
         }

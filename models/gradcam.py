@@ -1,8 +1,9 @@
 """
-Grad-CAM explainability wrapper.
+Grad-CAM Explainability — Module 2 (Osborn)
+=============================================
+Wraps pytorch-grad-cam to produce heatmaps compatible with the femscan-ai UI.
 
-Output contract (see docs/OUTPUT_CONTRACTS.md — CONTRACT 2):
-    GradCAMExplainer.explain(image_tensor, original_np) -> dict
+Output contract → docs/OUTPUT_CONTRACTS.md § Contract 2B
 """
 
 from __future__ import annotations
@@ -18,25 +19,25 @@ from typing import Dict, Any
 
 class GradCAMExplainer:
     """
-    Wraps pytorch-grad-cam to produce heatmaps and overlays compatible
-    with the femscan-ai UI (CONTRACT 2).
+    Usage
+    -----
+    explainer = GradCAMExplainer(model)
+    result = explainer.explain(image_tensor, original_np)   # → CONTRACT 2B
     """
 
     def __init__(self, model: nn.Module, target_layer: nn.Module | None = None):
         """
-        Args:
-            model: A CervicalClassifier (or any nn.Module).
-            target_layer: The convolutional layer to hook. Defaults to the
-                          last conv block of an EfficientNetV2-S backbone.
+        Args
+        ----
+        model        : CervicalClassifier instance.
+        target_layer : Conv layer to hook. Defaults to conv_head of EfficientNetV2-S.
         """
         if target_layer is None:
-            # EfficientNetV2-S via timm: last conv before global pool
             target_layer = model.backbone.conv_head
-
         self.cam = GradCAM(model=model, target_layers=[target_layer])
 
     # ------------------------------------------------------------------
-    # Explainability API — returns OUTPUT CONTRACT 2
+    # Explainability API — CONTRACT 2B
     # ------------------------------------------------------------------
 
     def explain(
@@ -45,32 +46,28 @@ class GradCAMExplainer:
         original_np: np.ndarray,
     ) -> Dict[str, Any]:
         """
-        Args:
-            image_tensor: float32 tensor (1, 3, 224, 224), same as passed to predict().
-            original_np:  uint8 RGB ndarray (224, 224, 3) — the raw image
-                          resized to model input size, used for overlay blending.
+        Args
+        ----
+        image_tensor : torch.Tensor  (1, 3, 224, 224), same tensor passed to predict().
+        original_np  : np.ndarray    (224, 224, 3) uint8 RGB — raw image at model size.
 
-        Returns:
-            dict matching CONTRACT 2 in docs/OUTPUT_CONTRACTS.md:
-            {
-                "heatmap":            np.ndarray [224, 224] float32 in [0, 1],
-                "overlay":            np.ndarray [224, 224, 3] uint8 RGB,
-                "attention_focus_pct": float  (% of pixels with heatmap > 0.5)
-            }
+        Returns (CONTRACT 2B)
+        ----------------------
+        {
+            "heatmap":             np.ndarray [224, 224] float32  0-1,
+            "overlay":             np.ndarray [224, 224, 3] uint8 RGB,  ← st.image() ready
+            "attention_focus_pct": float,   # % of pixels with heatmap > 0.5
+        }
         """
-        # grayscale_cam shape: (1, 224, 224)
         grayscale_cam = self.cam(input_tensor=image_tensor)
-        heatmap = grayscale_cam[0]  # (224, 224) float32 in [0, 1]
+        heatmap = grayscale_cam[0]  # (224, 224) float32
 
-        # Normalise original image to [0, 1] float for blending
-        img_float = original_np.astype(np.float32) / 255.0
+        img_float   = original_np.astype(np.float32) / 255.0
         overlay_bgr = show_cam_on_image(img_float, heatmap, use_rgb=False)
         overlay_rgb = cv2.cvtColor(overlay_bgr, cv2.COLOR_BGR2RGB)
 
-        attention_focus_pct = float((heatmap > 0.5).mean() * 100)
-
         return {
-            "heatmap": heatmap,
-            "overlay": overlay_rgb,
-            "attention_focus_pct": attention_focus_pct,
+            "heatmap":             heatmap,
+            "overlay":             overlay_rgb,
+            "attention_focus_pct": float((heatmap > 0.5).mean() * 100),
         }

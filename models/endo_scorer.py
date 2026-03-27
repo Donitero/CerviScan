@@ -1,8 +1,9 @@
 """
-Endometriosis Symptom Risk Scorer — XGBoost + SHAP explainability.
+MODULE 3 — Endometriosis Symptom Risk Scorer (Osborn)
+======================================================
+XGBoost + SHAP risk predictor for endometriosis from patient symptom questionnaire.
 
-Output contract (see docs/OUTPUT_CONTRACTS.md — CONTRACT 3):
-    EndoSymptomScorer.predict(symptoms_dict) -> dict
+Output contract → docs/OUTPUT_CONTRACTS.md § Contract 1B
 """
 
 from __future__ import annotations
@@ -15,39 +16,38 @@ from typing import Any, Dict, List
 
 
 # ---------------------------------------------------------------------------
-# Feature schema — MUST match training column order
+# Feature schema
 # ---------------------------------------------------------------------------
 
 FEATURE_SCHEMA: Dict[str, Dict[str, Any]] = {
-    "dysmenorrhea_score":    {"label": "Dysmenorrhea (pain) severity",        "range": (0, 10)},
-    "dyspareunia_score":     {"label": "Dyspareunia (pain during sex)",        "range": (0, 10)},
-    "chronic_pelvic_pain":   {"label": "Chronic pelvic pain score",            "range": (0, 10)},
-    "cycle_regularity":      {"label": "Cycle regularity (0=regular, 1=irreg)","range": (0, 1)},
-    "heavy_bleeding":        {"label": "Heavy menstrual bleeding (0/1)",        "range": (0, 1)},
-    "infertility_hx":        {"label": "History of infertility (0/1)",          "range": (0, 1)},
-    "family_hx":             {"label": "Family history of endometriosis (0/1)", "range": (0, 1)},
-    "fatigue_score":         {"label": "Fatigue severity score",               "range": (0, 10)},
-    "bloating_score":        {"label": "Bloating / GI symptoms score",         "range": (0, 10)},
-    "urinary_symptoms":      {"label": "Urinary symptom severity",             "range": (0, 10)},
-    "symptom_duration_yrs":  {"label": "Duration of symptoms (years)",         "range": (0, 30)},
-    "age":                   {"label": "Patient age (years)",                   "range": (15, 55)},
+    "dysmenorrhea_score":    {"label": "Dysmenorrhea (pain) severity (0-10)",        "range": (0, 10)},
+    "dyspareunia_score":     {"label": "Dyspareunia — pain during sex (0-10)",        "range": (0, 10)},
+    "chronic_pelvic_pain":   {"label": "Chronic pelvic pain score (0-10)",            "range": (0, 10)},
+    "cycle_regularity":      {"label": "Irregular cycles (0=regular, 1=irregular)",   "range": (0, 1)},
+    "heavy_bleeding":        {"label": "Heavy menstrual bleeding (0=No, 1=Yes)",       "range": (0, 1)},
+    "infertility_hx":        {"label": "History of infertility (0=No, 1=Yes)",         "range": (0, 1)},
+    "family_hx":             {"label": "Family history of endometriosis (0=No, 1=Yes)","range": (0, 1)},
+    "fatigue_score":         {"label": "Fatigue severity (0-10)",                     "range": (0, 10)},
+    "bloating_score":        {"label": "Bloating / GI symptoms (0-10)",               "range": (0, 10)},
+    "urinary_symptoms":      {"label": "Urinary symptom severity (0-10)",             "range": (0, 10)},
+    "symptom_duration_yrs":  {"label": "Duration of symptoms (years)",               "range": (0, 30)},
+    "age":                   {"label": "Patient age (years)",                          "range": (15, 55)},
 }
 
 FEATURE_COLUMNS = list(FEATURE_SCHEMA.keys())
 
-# Risk level thresholds (inclusive lower bound)
-RISK_LEVELS = [
-    (75, "Very High", "#F44336"),
-    (50, "High",      "#FF5722"),
-    (25, "Moderate",  "#FF9800"),
-    (0,  "Low",       "#4CAF50"),
+RISK_BANDS = [
+    (75.0, "Very High", "#F44336"),
+    (50.0, "High",      "#FF5722"),
+    (25.0, "Moderate",  "#FF9800"),
+    (0.0,  "Low",       "#4CAF50"),
 ]
 
 
-def _score_to_level(score: float):
-    for threshold, label, color in RISK_LEVELS:
+def _classify(score: float):
+    for threshold, level, color in RISK_BANDS:
         if score >= threshold:
-            return label, color
+            return level, color
     return "Low", "#4CAF50"
 
 
@@ -57,68 +57,61 @@ def _score_to_level(score: float):
 
 class EndoSymptomScorer:
     """
-    XGBoost-based endometriosis risk scorer with SHAP feature importance.
-
-    Usage:
-        scorer = EndoSymptomScorer(model_path="trained_models/endo_xgb.pkl")
-        result = scorer.predict(symptoms_dict)
+    Usage
+    -----
+    scorer = EndoSymptomScorer("trained_models/endo_xgb.pkl")
+    result = scorer.predict(symptoms_dict)   # → CONTRACT 1B
     """
 
     def __init__(self, model_path: str | None = None):
         self.model = None
         self.explainer = None
-
         if model_path:
             self.model = joblib.load(model_path)
             self.explainer = shap.TreeExplainer(self.model)
 
     # ------------------------------------------------------------------
-    # Inference API — returns OUTPUT CONTRACT 3
+    # Inference API — CONTRACT 1B
     # ------------------------------------------------------------------
 
-    def predict(self, symptoms_dict: Dict[str, float]) -> Dict[str, Any]:
+    def predict(self, symptoms: Dict[str, float]) -> Dict[str, Any]:
         """
-        Args:
-            symptoms_dict: keys matching FEATURE_COLUMNS, values as floats.
-                           Missing keys default to 0.
+        Args
+        ----
+        symptoms : dict  (keys from FEATURE_SCHEMA; missing keys → 0.0)
 
-        Returns:
-            dict matching CONTRACT 3 in docs/OUTPUT_CONTRACTS.md.
+        Returns (CONTRACT 1B)
+        ----------------------
+        {
+            "risk_score":    float,      # 0-100
+            "risk_level":    str,        # "Low" / "Moderate" / "High" / "Very High"
+            "risk_color":    str,        # hex
+            "recommendation": str,
+            "imaging_needed": bool,      # True when risk_score >= 50
+            "top_factors":   list[dict],
+        }
         """
-        # Build feature row in correct column order
-        row = {col: float(symptoms_dict.get(col, 0.0)) for col in FEATURE_COLUMNS}
-        X = pd.DataFrame([row], columns=FEATURE_COLUMNS)
+        row = {col: float(symptoms.get(col, 0.0)) for col in FEATURE_COLUMNS}
+        X   = pd.DataFrame([row], columns=FEATURE_COLUMNS)
 
         if self.model is not None:
-            # Model returns probability of positive class (endometriosis)
-            prob = float(self.model.predict_proba(X)[0, 1])
+            prob       = float(self.model.predict_proba(X)[0, 1])
             risk_score = round(prob * 100, 1)
-
-            # SHAP values for this sample
-            shap_vals = self.explainer.shap_values(X)
-            # For binary XGBoost TreeExplainer, shap_vals may be list[2] or array
-            if isinstance(shap_vals, list):
-                sv = shap_vals[1][0]  # positive class
-            else:
-                sv = shap_vals[0]
-
-            top_factors = _build_top_factors(sv, row, n=5)
+            shap_vals  = self.explainer.shap_values(X)
+            sv = shap_vals[1][0] if isinstance(shap_vals, list) else shap_vals[0]
+            top_factors = _top_factors(sv)
         else:
-            # No trained model — return heuristic score for demo/dev
-            risk_score, top_factors = _heuristic_score(row)
+            risk_score, top_factors = _heuristic_endo(row)
 
-        risk_level, risk_color = _score_to_level(risk_score)
-        imaging_needed = risk_score >= 50
-
-        recommendation = _recommendation_text(risk_level)
+        risk_level, risk_color = _classify(risk_score)
 
         return {
-            "risk_score":      risk_score,
-            "risk_level":      risk_level,
-            "risk_color":      risk_color,
-            "recommendation":  recommendation,
-            "imaging_needed":  imaging_needed,
-            "top_factors":     top_factors,
+            "risk_score":    risk_score,
+            "risk_level":    risk_level,
+            "risk_color":    risk_color,
+            "recommendation": _endo_recommendation(risk_level),
+            "imaging_needed": risk_score >= 50,
+            "top_factors":   top_factors,
         }
 
 
@@ -126,26 +119,19 @@ class EndoSymptomScorer:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _build_top_factors(
-    shap_values: np.ndarray,
-    row: Dict[str, float],
-    n: int = 5,
-) -> List[Dict[str, Any]]:
-    indices = np.argsort(np.abs(shap_values))[::-1][:n]
-    factors = []
-    for i in indices:
-        col = FEATURE_COLUMNS[i]
-        sv = float(shap_values[i])
-        factors.append({
-            "feature_label": FEATURE_SCHEMA[col]["label"],
-            "impact":        round(abs(sv), 4),
-            "direction":     "increases_risk" if sv > 0 else "decreases_risk",
-        })
-    return factors
+def _top_factors(shap_values: np.ndarray, n: int = 5) -> List[Dict[str, Any]]:
+    idx = np.argsort(np.abs(shap_values))[::-1][:n]
+    return [
+        {
+            "feature_label": FEATURE_SCHEMA[FEATURE_COLUMNS[i]]["label"],
+            "impact":        round(float(abs(shap_values[i])), 4),
+            "direction":     "increases_risk" if shap_values[i] > 0 else "decreases_risk",
+        }
+        for i in idx
+    ]
 
 
-def _heuristic_score(row: Dict[str, float]):
-    """Simple weighted heuristic used when no trained model is available."""
+def _heuristic_endo(row: Dict[str, float]) -> tuple[float, List[Dict[str, Any]]]:
     weights = {
         "dysmenorrhea_score":   0.20,
         "dyspareunia_score":    0.15,
@@ -158,42 +144,27 @@ def _heuristic_score(row: Dict[str, float]):
         "bloating_score":       0.04,
         "urinary_symptoms":     0.03,
     }
-    # Normalise numeric features to [0,1]
-    schema = FEATURE_SCHEMA
     score = 0.0
-    factor_list = []
+    factors = []
     for col, w in weights.items():
-        lo, hi = schema[col]["range"]
-        norm_val = (row[col] - lo) / (hi - lo) if hi > lo else row[col]
-        contribution = w * norm_val * 100
+        lo, hi = FEATURE_SCHEMA[col]["range"]
+        norm = ((row[col] - lo) / (hi - lo)) if hi > lo else row[col]
+        norm = max(0.0, min(1.0, norm))
+        contribution = w * norm * 100
         score += contribution
-        factor_list.append({
-            "feature_label": schema[col]["label"],
-            "impact":        round(abs(contribution), 4),
-            "direction":     "increases_risk" if norm_val > 0.5 else "decreases_risk",
+        factors.append({
+            "feature_label": FEATURE_SCHEMA[col]["label"],
+            "impact":        round(contribution, 4),
+            "direction":     "increases_risk" if norm > 0.4 else "decreases_risk",
         })
+    factors.sort(key=lambda x: x["impact"], reverse=True)
+    return round(min(score, 100), 1), factors[:5]
 
-    factor_list.sort(key=lambda x: x["impact"], reverse=True)
-    return round(min(score, 100), 1), factor_list[:5]
 
-
-def _recommendation_text(risk_level: str) -> str:
-    recs = {
-        "Low": (
-            "Symptom profile suggests low endometriosis risk. Continue routine gynaecological "
-            "care and monitor for symptom changes."
-        ),
-        "Moderate": (
-            "Moderate risk indicators present. A detailed clinical consultation and pelvic "
-            "ultrasound are recommended to rule out endometriosis."
-        ),
-        "High": (
-            "High-risk symptom pattern detected. Referral to a specialist gynaecologist for "
-            "transvaginal ultrasound and possible laparoscopy is strongly advised."
-        ),
-        "Very High": (
-            "Very high risk. Urgent specialist referral required. Imaging and minimally invasive "
-            "diagnostic evaluation (laparoscopy) should be arranged promptly."
-        ),
-    }
-    return recs.get(risk_level, "Please consult a healthcare professional.")
+def _endo_recommendation(risk_level: str) -> str:
+    return {
+        "Low":      "Low endometriosis risk. Continue routine gynaecological care.",
+        "Moderate": "Moderate risk. Clinical consultation and pelvic ultrasound recommended within 3 months.",
+        "High":     "High risk. Specialist referral for transvaginal ultrasound and possible laparoscopy advised.",
+        "Very High": "Very high risk. Urgent specialist referral required. Prompt diagnostic laparoscopy recommended.",
+    }.get(risk_level, "Consult a healthcare professional.")

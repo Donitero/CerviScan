@@ -1,7 +1,10 @@
 """
-Modal deployment configuration for FemScan-AI inference endpoints.
+Modal Deployment — FemScan AI
+==============================
+Osborn   → train_* functions (fine-tuning pipelines)
+Person D → serve_* functions (inference endpoints)
 
-Deploy with:
+Deploy:
     modal deploy modal_deploy.py
 """
 
@@ -14,46 +17,47 @@ image = (
     .pip_install_from_requirements("requirements.txt")
 )
 
+# ── Training functions (Osborn) ────────────────────────────────────────────
+
+@app.function(image=image, gpu="A10G", timeout=3600)
+def train_cervical_classifier():
+    """Fine-tune EfficientNetV2-S on SIPaKMeD. Saves to trained_models/cervical_best.pt"""
+    raise NotImplementedError("Training pipeline — Osborn implements this.")
+
+
+@app.function(image=image, timeout=1800)
+def train_hpv_scorer():
+    """Train XGBoost HPV risk scorer. Saves to trained_models/hpv_xgb.pkl"""
+    raise NotImplementedError("Training pipeline — Osborn implements this.")
+
+
+@app.function(image=image, timeout=1800)
+def train_endo_scorer():
+    """Train XGBoost endo scorer. Saves to trained_models/endo_xgb.pkl"""
+    raise NotImplementedError("Training pipeline — Osborn implements this.")
+
+
+# ── Inference endpoints (Person D) ────────────────────────────────────────
 
 @app.function(image=image, gpu="T4", timeout=120)
-def classify_cervical(image_bytes: bytes) -> dict:
-    """Run CervicalClassifier + GradCAM on raw image bytes. Returns CONTRACT 1 + 2."""
-    import io
-    import torch
-    import numpy as np
-    from PIL import Image
-    import torchvision.transforms as T
-    from models.cervical_classifier import CervicalClassifier
-    from models.gradcam import GradCAMExplainer
-
-    transform = T.Compose([
-        T.Resize((224, 224)),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-    pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    original_np = np.array(pil_img.resize((224, 224))).astype(np.uint8)
-
-    tensor = transform(pil_img).unsqueeze(0)
-
-    model = CervicalClassifier(checkpoint_path="trained_models/cervical_best.pt")
-    explainer = GradCAMExplainer(model)
-
-    classify_result = model.predict(tensor)
-    explain_result = explainer.explain(tensor, original_np)
-
-    # Serialise numpy arrays to lists for JSON transport
-    explain_result["heatmap"] = explain_result["heatmap"].tolist()
-    explain_result["overlay"] = explain_result["overlay"].tolist()
-
-    return {"classify": classify_result, "explain": explain_result}
+def serve_cervical(image_bytes: bytes) -> dict:
+    """
+    Run Module 2: CervicalClassifier + GradCAM.
+    Returns Contracts 2A + 2B (heatmap/overlay as nested lists for JSON transport).
+    """
+    # Person D implements this
+    raise NotImplementedError("Inference endpoint — Person D implements this.")
 
 
 @app.function(image=image, timeout=60)
-def score_endo(symptoms_dict: dict) -> dict:
-    """Run EndoSymptomScorer. Returns CONTRACT 3."""
-    from models.endo_scorer import EndoSymptomScorer
+def serve_hpv(patient_data: dict) -> dict:
+    """Run Module 1: HPVRiskScorer. Returns Contract 1A."""
+    # Person D implements this
+    raise NotImplementedError("Inference endpoint — Person D implements this.")
 
-    scorer = EndoSymptomScorer(model_path="trained_models/endo_xgb.pkl")
-    return scorer.predict(symptoms_dict)
+
+@app.function(image=image, timeout=60)
+def serve_endo(symptoms: dict) -> dict:
+    """Run Module 3: EndoSymptomScorer. Returns Contract 1B."""
+    # Person D implements this
+    raise NotImplementedError("Inference endpoint — Person D implements this.")
