@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Model weights (large binaries — store in DVC/S3)
+trained_models/*.pt
+trained_models/*.pth
+trained_models/*.pkl
+trained_models/*.bin
+trained_models/*.ckpt
+!trained_models/.gitkeep
+
+# Data (raw datasets — store in DVC/S3)
+data/sipakmed/*
+data/endo/*
+!data/sipakmed/.gitkeep
+!data/endo/.gitkeep
+!data/demo/
+data/demo/*.png
+data/demo/*.jpg
+data/demo/*.jpeg
+
+# Logs
+*.log
+logs/
+runs/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Modal
+.modal/
