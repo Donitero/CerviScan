@@ -37,8 +37,10 @@ trained_models/*.ckpt
 
 # Raw datasets (use DVC / S3)
 data/sipakmed/*
+data/sipakmed_split/
 data/hpv/*
 data/endo/*
+unclean_data/
 !data/sipakmed/.gitkeep
 !data/hpv/.gitkeep
 !data/endo/.gitkeep
