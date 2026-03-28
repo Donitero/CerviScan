@@ -320,7 +320,8 @@ def main(cfg: dict):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=cfg["epochs"]
     )
-    scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
+    # Old line: scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
+scaler = torch.amp.GradScaler('cuda', enabled=(device.type == "cuda"))
 
     best_val_acc = 0.0
     best_path    = out_dir / "cervical_best.pt"
