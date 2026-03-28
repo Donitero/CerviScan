@@ -1,10 +1,10 @@
 """
 MODULE 2 — CIN Lesion Detector (Osborn)
 ========================================
-EfficientNetV2-S fine-tuned on SIPaKMeD for 5-class cervical cell classification
-with CIN grading aligned to pitch deck Slide 8 triage colours.
+EfficientNetV2-S fine-tuned on Bethesda-classified cervical cytology data
+(6 classes: Negative, ASC-US, LSIL, ASC-H, HSIL, ca).
 
-Output contract → docs/OUTPUT_CONTRACTS.md § Contract 2A
+Output contract -> docs/OUTPUT_CONTRACTS.md § Contract 2A
 """
 
 from __future__ import annotations
@@ -16,54 +16,64 @@ from typing import Dict, Any
 
 
 # ---------------------------------------------------------------------------
-# Class metadata — drives CIN grading + pitch-deck triage colours
+# Class metadata — Bethesda classification aligned to actual dataset
+# Classes: Negative, ASC-US, LSIL, ASC-H, HSIL, ca
 # ---------------------------------------------------------------------------
 
 CLASS_META: Dict[str, Dict[str, Any]] = {
-    "Superficial-Intermediate": {
+    "Negative": {
         "category":     "Normal",
         "cin_grade":    "No CIN",
         "triage_color": "green",
-        "action":       "Routine screening. No immediate follow-up required.",
+        "action":       "No abnormality detected. Routine screening schedule.",
         "urgency":      "low",
-        "description":  "Mature squamous cells from the upper epithelial layers. Normal finding.",
+        "description":  "Negative for intraepithelial lesion or malignancy (NILM). Normal squamous cells.",
         "color":        "#4CAF50",
     },
-    "Parabasal": {
-        "category":     "Normal",
-        "cin_grade":    "No CIN",
-        "triage_color": "green",
-        "action":       "Routine screening. Correlate with hormonal status.",
+    "ASC-US": {
+        "category":     "Borderline",
+        "cin_grade":    "Indeterminate",
+        "triage_color": "amber",
+        "action":       "Atypical cells of undetermined significance. Reflex HPV testing or repeat smear in 12 months.",
         "urgency":      "low",
-        "description":  "Parabasal cells — common in atrophic/post-menopausal smears. Usually benign.",
-        "color":        "#8BC34A",
+        "description":  "ASC-US: minor atypia that does not meet criteria for LSIL. Most resolve spontaneously.",
+        "color":        "#CDDC39",
     },
-    "Koilocyte": {
-        "category":     "Benign",
+    "LSIL": {
+        "category":     "Low-grade",
         "cin_grade":    "CIN1 (low-grade)",
         "triage_color": "amber",
-        "action":       "HPV cytopathic effect noted. Repeat smear in 6–12 months; consider HPV co-test.",
+        "action":       "Low-grade squamous intraepithelial lesion. Repeat cytology or colposcopy in 6-12 months.",
         "urgency":      "moderate",
-        "description":  "Koilocytes show perinuclear halos consistent with active HPV infection (CIN1 equivalent).",
+        "description":  "LSIL: changes consistent with HPV cytopathic effect (koilocytosis). Usually CIN1.",
         "color":        "#FF9800",
     },
-    "Dyskeratocyte": {
-        "category":     "Benign",
-        "cin_grade":    "CIN1 (low-grade)",
-        "triage_color": "amber",
-        "action":       "Abnormal keratinisation detected. Colposcopy referral recommended.",
-        "urgency":      "moderate",
-        "description":  "Dyskeratocytes indicate premature keratinisation; may represent low-grade SIL.",
+    "ASC-H": {
+        "category":     "High-grade suspect",
+        "cin_grade":    "CIN2 suspect",
+        "triage_color": "red",
+        "action":       "Atypical cells -- HSIL cannot be excluded. Colposcopy referral required.",
+        "urgency":      "high",
+        "description":  "ASC-H: atypical squamous cells where high-grade lesion cannot be excluded.",
         "color":        "#FF5722",
     },
-    "Metaplastic": {
-        "category":     "Abnormal",
+    "HSIL": {
+        "category":     "High-grade",
         "cin_grade":    "CIN2-3 (high-grade)",
         "triage_color": "red",
-        "action":       "High-grade changes suspected. Urgent colposcopy and directed biopsy required.",
+        "action":       "High-grade squamous intraepithelial lesion. Urgent colposcopy and directed biopsy.",
         "urgency":      "high",
-        "description":  "Atypical metaplastic cells from the transformation zone — high-grade SIL cannot be excluded.",
+        "description":  "HSIL: significant nuclear atypia consistent with CIN2 or CIN3. Requires immediate follow-up.",
         "color":        "#F44336",
+    },
+    "ca": {
+        "category":     "Malignant",
+        "cin_grade":    "Carcinoma",
+        "triage_color": "red",
+        "action":       "Findings suspicious for carcinoma. Immediate oncology referral required.",
+        "urgency":      "high",
+        "description":  "Cells with features consistent with squamous cell carcinoma. Urgent specialist review.",
+        "color":        "#B71C1C",
     },
 }
 
@@ -76,7 +86,7 @@ NUM_CLASSES  = len(CLASS_NAMES)
 # ---------------------------------------------------------------------------
 
 class CervicalClassifier(nn.Module):
-    """EfficientNetV2-S fine-tuned on SIPaKMeD (5-class CIN classification)."""
+    """EfficientNetV2-S fine-tuned on Bethesda-classified cervical cytology (6 classes)."""
 
     def __init__(self, pretrained: bool = False, checkpoint_path: str | None = None):
         super().__init__()
@@ -107,10 +117,11 @@ class CervicalClassifier(nn.Module):
         ----------------------
         {
             "class_name":    str,
-            "category":      "Normal" | "Benign" | "Abnormal",
+            "category":      "Normal" | "Borderline" | "Low-grade" | "High-grade suspect"
+                             | "High-grade" | "Malignant",
             "confidence":    float 0-1,
             "all_probs":     {class_name: float, ...},
-            "cin_grade":     "No CIN" | "CIN1 (low-grade)" | "CIN2-3 (high-grade)",
+            "cin_grade":     str,
             "triage_color":  "green" | "amber" | "red",
             "action":        str,
             "urgency":       "low" | "moderate" | "high",
