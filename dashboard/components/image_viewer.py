@@ -23,7 +23,7 @@ def image_viewer(
 
     with col1:
         st.markdown(
-            '<p style="color:#a0a0b0; font-size:12px; text-align:center; margin-bottom:4px;">CYTOLOGY IMAGE</p>',
+            '<p style="color:#9BB3A7; font-size:12px; text-align:center; margin-bottom:4px;">CYTOLOGY IMAGE</p>',
             unsafe_allow_html=True,
         )
         st.image(original_np, use_container_width=True)
@@ -34,7 +34,7 @@ def image_viewer(
             if attention_pct is not None:
                 label += f"  ·  {attention_pct:.1f}% focus area"
             st.markdown(
-                f'<p style="color:#a0a0b0; font-size:12px; text-align:center; margin-bottom:4px;">{label}</p>',
+                f'<p style="color:#9BB3A7; font-size:12px; text-align:center; margin-bottom:4px;">{label}</p>',
                 unsafe_allow_html=True,
             )
             st.image(overlay_np, use_container_width=True)
@@ -70,6 +70,15 @@ _CLASS_COLORS = {
     "im_Dyskeratotic": "#F44336",
 }
 
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6:
+        return f"rgba(27,174,119,{alpha})"
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
 
 def _prob_bars(all_probs: dict, predicted: str):
     labels = []
@@ -79,8 +88,8 @@ def _prob_bars(all_probs: dict, predicted: str):
     for cls, prob in sorted(all_probs.items(), key=lambda x: x[1], reverse=True):
         labels.append(_DISPLAY.get(cls, cls))
         values.append(round(prob * 100, 1))
-        base = _CLASS_COLORS.get(cls, "#9C27B0")
-        colors.append(base if cls == predicted else base + "55")
+        base = _CLASS_COLORS.get(cls, "#1BAE77")
+        colors.append(base if cls == predicted else _hex_to_rgba(base, 0.35))
 
     fig = go.Figure(go.Bar(
         x=values,
@@ -90,11 +99,11 @@ def _prob_bars(all_probs: dict, predicted: str):
         hovertemplate="<b>%{y}</b>: %{x:.1f}%<extra></extra>",
         text=[f"{v:.0f}%" for v in values],
         textposition="outside",
-        textfont=dict(color="#a0a0b0", size=11),
+        textfont=dict(color="#9BB3A7", size=11),
     ))
 
     fig.update_layout(
-        title=dict(text="Class Probabilities", font=dict(size=13, color="#E8E8E8")),
+        title=dict(text="Class Probabilities", font=dict(size=13, color="#F2F7F3")),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=200,
@@ -102,13 +111,13 @@ def _prob_bars(all_probs: dict, predicted: str):
         xaxis=dict(
             range=[0, 110],
             showgrid=False, zeroline=False,
-            tickfont=dict(color="#a0a0b0", size=10),
+            tickfont=dict(color="#9BB3A7", size=10),
         ),
         yaxis=dict(
-            tickfont=dict(color="#E8E8E8", size=11),
+            tickfont=dict(color="#F2F7F3", size=11),
             automargin=True,
         ),
-        font=dict(color="#E8E8E8"),
+        font=dict(color="#F2F7F3"),
     )
 
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})

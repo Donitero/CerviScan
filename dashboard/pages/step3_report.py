@@ -18,10 +18,10 @@ def render():
     st.markdown(
         """
         <div style="margin-bottom:20px;">
-            <span style="color:#9C27B0; font-size:12px; font-weight:600;
+            <span style="color:#1BAE77; font-size:12px; font-weight:600;
                           text-transform:uppercase; letter-spacing:1.5px;">Step 3 of 3</span>
-            <h2 style="color:#E8E8E8; margin:4px 0 6px; font-size:22px;">Clinical Report</h2>
-            <p style="color:#a0a0b0; margin:0; font-size:14px;">
+            <h2 style="color:#F2F7F3; margin:4px 0 6px; font-size:22px;">Clinical Report</h2>
+            <p style="color:#9BB3A7; margin:0; font-size:14px;">
                 Consolidated findings and recommended actions across all modules.
             </p>
         </div>
@@ -63,7 +63,7 @@ def render():
                 font-size:20px; flex-shrink:0;
             ">{'🔴' if overall_color == '#F44336' else ('🟡' if overall_color == '#FF9800' else '🟢')}</div>
             <div>
-                <p style="color:#a0a0b0; font-size:12px; margin:0 0 2px; text-transform:uppercase; letter-spacing:1px;">Overall Triage Status</p>
+                <p style="color:#9BB3A7; font-size:12px; margin:0 0 2px; text-transform:uppercase; letter-spacing:1px;">Overall Triage Status</p>
                 <p style="color:{overall_color}; font-size:18px; font-weight:700; margin:0;">{overall_label}</p>
             </div>
         </div>
@@ -87,15 +87,15 @@ def render():
             _detail_row("Risk Level",   hpv_result["risk_level"])
             _detail_row("Strain Risk",  hpv_result["hpv_strain_risk"])
             _detail_row("Imaging",      "Required" if hpv_result["escalate_to_imaging"] else "Not required")
-            st.markdown('<hr style="border:none;border-top:1px solid #2a2a3e;margin:12px 0"/>', unsafe_allow_html=True)
+            st.markdown('<hr style="border:none;border-top:1px solid #1f2a25;margin:12px 0"/>', unsafe_allow_html=True)
             st.caption("Top contributing factors:")
             for f in hpv_result.get("top_risk_factors", []):
                 arrow = "▲" if f["direction"] == "increases_risk" else "▼"
                 color = "#F44336" if f["direction"] == "increases_risk" else "#4CAF50"
                 st.markdown(
                     f'<span style="color:{color};">{arrow}</span> '
-                    f'<span style="color:#E8E8E8; font-size:13px;">{f.get("factor","")}</span> '
-                    f'<span style="color:#606070; font-size:12px;">(impact: {f["impact"]:.3f})</span>',
+                    f'<span style="color:#F2F7F3; font-size:13px;">{f.get("factor","")}</span> '
+                    f'<span style="color:#6f857a; font-size:12px;">(impact: {f["impact"]:.3f})</span>',
                     unsafe_allow_html=True,
                 )
 
@@ -104,15 +104,15 @@ def render():
             _detail_row("Risk Score",  f"{endo_result['risk_score']:.0f} / 100")
             _detail_row("Risk Level",  endo_result["risk_level"])
             _detail_row("Imaging",     "Recommended" if endo_result["imaging_needed"] else "Not required")
-            st.markdown('<hr style="border:none;border-top:1px solid #2a2a3e;margin:12px 0"/>', unsafe_allow_html=True)
+            st.markdown('<hr style="border:none;border-top:1px solid #1f2a25;margin:12px 0"/>', unsafe_allow_html=True)
             st.caption("Top symptom drivers:")
             for f in endo_result.get("top_factors", []):
                 arrow = "▲" if f["direction"] == "increases_risk" else "▼"
                 color = "#F44336" if f["direction"] == "increases_risk" else "#4CAF50"
                 st.markdown(
                     f'<span style="color:{color};">{arrow}</span> '
-                    f'<span style="color:#E8E8E8; font-size:13px;">{f.get("feature_label","")}</span> '
-                    f'<span style="color:#606070; font-size:12px;">(impact: {f["impact"]:.3f})</span>',
+                    f'<span style="color:#F2F7F3; font-size:13px;">{f.get("feature_label","")}</span> '
+                    f'<span style="color:#6f857a; font-size:12px;">(impact: {f["impact"]:.3f})</span>',
                     unsafe_allow_html=True,
                 )
 
@@ -136,7 +136,7 @@ def render():
     )
 
     # ── Nav ───────────────────────────────────────────────────────────────────
-    st.markdown('<hr style="border:none; border-top:1px solid #2a2a3e; margin:20px 0 16px;">', unsafe_allow_html=True)
+    st.markdown('<hr style="border:none; border-top:1px solid #1f2a25; margin:20px 0 16px;">', unsafe_allow_html=True)
     back_col, _, restart_col = st.columns([1, 3, 1])
     with back_col:
         if st.button("← Back to Analysis", use_container_width=True):
@@ -158,9 +158,9 @@ def _detail_row(label: str, value: str):
     st.markdown(
         f"""
         <div style="display:flex; justify-content:space-between;
-                    padding:6px 0; border-bottom:1px solid #2a2a3e;">
-            <span style="color:#a0a0b0; font-size:13px;">{label}</span>
-            <span style="color:#E8E8E8; font-size:13px; font-weight:500;">{value}</span>
+                    padding:6px 0; border-bottom:1px solid #1f2a25;">
+            <span style="color:#9BB3A7; font-size:13px;">{label}</span>
+            <span style="color:#F2F7F3; font-size:13px; font-weight:500;">{value}</span>
         </div>
         """,
         unsafe_allow_html=True,

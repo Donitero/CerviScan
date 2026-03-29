@@ -18,18 +18,18 @@ def report_card(
     st.markdown(
         f"""
         <div style="
-            background:#1a1a2e;
-            border:1px solid #9C27B033;
+            background:#141a1b;
+            border:1px solid #1BAE7733;
             border-radius:16px;
             padding:28px 28px 20px;
         ">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
                 <div>
-                    <p style="color:#9C27B0; font-size:12px; text-transform:uppercase;
+                    <p style="color:#1BAE77; font-size:12px; text-transform:uppercase;
                                letter-spacing:1.5px; margin:0 0 4px;">FemScan AI</p>
-                    <h2 style="color:#E8E8E8; margin:0; font-size:20px;">Clinical Triage Report</h2>
+                    <h2 style="color:#F2F7F3; margin:0; font-size:20px;">Clinical Triage Report</h2>
                 </div>
-                <p style="color:#606070; font-size:12px; margin:0;">{now}</p>
+                <p style="color:#6f857a; font-size:12px; margin:0;">{now}</p>
             </div>
         """,
         unsafe_allow_html=True,
@@ -43,7 +43,7 @@ def report_card(
             "HPV Risk",
             hpv_result.get("hpv_risk_score", 0) if hpv_result else None,
             hpv_result.get("risk_level", "—") if hpv_result else "—",
-            hpv_result.get("risk_color", "#606070") if hpv_result else "#606070",
+            hpv_result.get("risk_color", "#6f857a") if hpv_result else "#6f857a",
             hpv_result.get("hpv_strain_risk", "") if hpv_result else "",
         )
 
@@ -52,7 +52,7 @@ def report_card(
             "Endometriosis Risk",
             endo_result.get("risk_score", 0) if endo_result else None,
             endo_result.get("risk_level", "—") if endo_result else "—",
-            endo_result.get("risk_color", "#606070") if endo_result else "#606070",
+            endo_result.get("risk_color", "#6f857a") if endo_result else "#6f857a",
             "Imaging recommended" if (endo_result or {}).get("imaging_needed") else "",
         )
 
@@ -60,7 +60,7 @@ def report_card(
         if cin_result:
             _cin_tile(cin_result)
         else:
-            _result_tile("CIN Analysis", None, "Not run", "#606070", "Upload image in Step 2")
+            _result_tile("CIN Analysis", None, "Not run", "#6f857a", "Upload image in Step 2")
 
     st.markdown("<div style='height:20px'/>", unsafe_allow_html=True)
 
@@ -68,15 +68,15 @@ def report_card(
     actions = _collect_actions(hpv_result, endo_result, cin_result)
     if actions:
         st.markdown(
-            '<p style="color:#a0a0b0; font-size:12px; text-transform:uppercase; '
+            '<p style="color:#9BB3A7; font-size:12px; text-transform:uppercase; '
             'letter-spacing:1px; margin:0 0 10px;">Recommended Actions</p>',
             unsafe_allow_html=True,
         )
         for urgency, text in actions:
             icon  = {"high": "🔴", "moderate": "🟡", "low": "🟢"}.get(urgency, "•")
             st.markdown(
-                f'<div style="padding:8px 0; border-bottom:1px solid #2a2a3e; '
-                f'color:#E8E8E8; font-size:13px;">{icon}&nbsp; {text}</div>',
+                f'<div style="padding:8px 0; border-bottom:1px solid #1f2a25; '
+                f'color:#F2F7F3; font-size:13px;">{icon}&nbsp; {text}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -99,13 +99,13 @@ def _result_tile(title, score, level, color, sub):
     st.markdown(
         f"""
         <div style="
-            background:#12122a;
+            background:#101516;
             border:1px solid {color}33;
             border-radius:12px;
             padding:16px;
             text-align:center;
         ">
-            <p style="color:#a0a0b0; font-size:11px; text-transform:uppercase;
+            <p style="color:#9BB3A7; font-size:11px; text-transform:uppercase;
                        letter-spacing:1px; margin:0 0 8px;">{title}</p>
             <p style="color:{color}; font-size:28px; font-weight:700; margin:0 0 4px;">{score_str}</p>
             <span style="
@@ -113,7 +113,7 @@ def _result_tile(title, score, level, color, sub):
                 color:{color}; border-radius:10px; padding:2px 12px;
                 font-size:12px; font-weight:600;
             ">{level}</span>
-            <p style="color:#606070; font-size:11px; margin:8px 0 0;">{sub}</p>
+            <p style="color:#6f857a; font-size:11px; margin:8px 0 0;">{sub}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -130,13 +130,13 @@ def _cin_tile(cin_result):
     st.markdown(
         f"""
         <div style="
-            background:#12122a;
+            background:#101516;
             border:1px solid {color}33;
             border-radius:12px;
             padding:16px;
             text-align:center;
         ">
-            <p style="color:#a0a0b0; font-size:11px; text-transform:uppercase;
+            <p style="color:#9BB3A7; font-size:11px; text-transform:uppercase;
                        letter-spacing:1px; margin:0 0 8px;">CIN Analysis</p>
             <p style="color:{color}; font-size:18px; font-weight:700; margin:0 0 4px;">{grade}</p>
             <span style="
@@ -144,7 +144,7 @@ def _cin_tile(cin_result):
                 color:{color}; border-radius:10px; padding:2px 12px;
                 font-size:12px; font-weight:600;
             ">{cat}</span>
-            <p style="color:#606070; font-size:11px; margin:8px 0 0;">{conf*100:.0f}% confidence</p>
+            <p style="color:#6f857a; font-size:11px; margin:8px 0 0;">{conf*100:.0f}% confidence</p>
         </div>
         """,
         unsafe_allow_html=True,

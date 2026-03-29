@@ -22,10 +22,10 @@ def _section_header(step: str, title: str, subtitle: str):
     st.markdown(
         f"""
         <div style="margin-bottom:20px;">
-            <span style="color:#9C27B0; font-size:12px; font-weight:600;
+            <span style="color:#1BAE77; font-size:12px; font-weight:600;
                           text-transform:uppercase; letter-spacing:1.5px;">{step}</span>
-            <h2 style="color:#E8E8E8; margin:4px 0 6px; font-size:22px;">{title}</h2>
-            <p style="color:#a0a0b0; margin:0; font-size:14px;">{subtitle}</p>
+            <h2 style="color:#F2F7F3; margin:4px 0 6px; font-size:22px;">{title}</h2>
+            <p style="color:#9BB3A7; margin:0; font-size:14px;">{subtitle}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -33,7 +33,7 @@ def _section_header(step: str, title: str, subtitle: str):
 
 
 def _divider():
-    st.markdown('<hr style="border:none; border-top:1px solid #2a2a3e; margin:20px 0;">', unsafe_allow_html=True)
+    st.markdown('<hr style="border:none; border-top:1px solid #1f2a25; margin:20px 0;">', unsafe_allow_html=True)
 
 
 def render():
@@ -48,7 +48,7 @@ def render():
     # ── HPV Risk Form ──────────────────────────────────────────────────────────
     with left:
         st.markdown(
-            '<p style="color:#9C27B0; font-size:13px; font-weight:600; '
+            '<p style="color:#1BAE77; font-size:13px; font-weight:600; '
             'text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">HPV Risk Assessment</p>',
             unsafe_allow_html=True,
         )
@@ -106,7 +106,7 @@ def render():
     # ── Endo Symptom Form ──────────────────────────────────────────────────────
     with right:
         st.markdown(
-            '<p style="color:#9C27B0; font-size:13px; font-weight:600; '
+            '<p style="color:#1BAE77; font-size:13px; font-weight:600; '
             'text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Endometriosis Symptom Scoring</p>',
             unsafe_allow_html=True,
         )
@@ -160,6 +160,24 @@ def render():
 
         _divider()
         factor_chart(endo_result["top_factors"], "Top Symptom Drivers")
+
+    # -- Sample imagery --
+    st.markdown('<div style="height:18px"/>', unsafe_allow_html=True)
+    st.markdown(
+        '<p style="color:#1BAE77; font-size:11px; text-transform:uppercase; '        'letter-spacing:2px; margin-bottom:12px;">Additional Cytology Samples</p>',
+        unsafe_allow_html=True,
+    )
+    asset_dir = Path(__file__).resolve().parents[2] / "dashboard" / "assets" / "preview"
+    s1, s2 = st.columns(2, gap="large")
+    samples = [
+        (asset_dir / "preview5.jpg", "Sample E"),
+        (asset_dir / "preview6.jpg", "Sample F"),
+    ]
+    for col, (path, caption) in zip([s1, s2], samples):
+        with col:
+            if path.exists():
+                st.image(str(path), use_container_width=True)
+                st.caption(caption)
 
     # ── Continue CTA ──────────────────────────────────────────────────────────
     st.markdown('<div style="height:16px"/>', unsafe_allow_html=True)

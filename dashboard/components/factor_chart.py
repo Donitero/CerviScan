@@ -41,21 +41,21 @@ def factor_chart(factors: list, title: str = "Key Risk Factors"):
     ))
 
     fig.update_layout(
-        title=dict(text=title, font=dict(size=14, color="#E8E8E8")),
+        title=dict(text=title, font=dict(size=14, color="#F2F7F3")),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=220,
         margin=dict(l=10, r=10, t=36, b=10),
         xaxis=dict(
-            showgrid=True, gridcolor="#2a2a3e",
-            zeroline=False, tickfont=dict(color="#a0a0b0", size=11),
-            title=dict(text="SHAP Impact", font=dict(color="#a0a0b0", size=11)),
+            showgrid=True, gridcolor="#1f2a25",
+            zeroline=False, tickfont=dict(color="#9BB3A7", size=11),
+            title=dict(text="SHAP Impact", font=dict(color="#9BB3A7", size=11)),
         ),
         yaxis=dict(
-            tickfont=dict(color="#E8E8E8", size=11),
+            tickfont=dict(color="#F2F7F3", size=11),
             automargin=True,
         ),
-        font=dict(color="#E8E8E8"),
+        font=dict(color="#F2F7F3"),
     )
 
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})

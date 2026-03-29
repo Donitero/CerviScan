@@ -5,11 +5,13 @@ Falls back to demo assets when no model weights are present.
 """
 import sys
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 import streamlit as st
 from PIL import Image
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -20,15 +22,90 @@ PROJ      = Path(__file__).resolve().parents[2]
 DEMO_DIR  = PROJ / "data" / "demo"
 MODEL_DIR = PROJ / "trained_models"
 
+def _get_setting(key: str) -> str:
+    value = os.getenv(key)
+    if value:
+        return value.strip()
+    try:
+        if key in st.secrets:
+            return str(st.secrets[key]).strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def _get_confirm_token(response: requests.Response) -> str | None:
+    for k, v in response.cookies.items():
+        if k.startswith("download_warning"):
+            return v
+    text = response.text
+    marker = "confirm="
+    if marker in text:
+        idx = text.find(marker) + len(marker)
+        token = ""
+        while idx < len(text) and text[idx].isalnum():
+            token += text[idx]
+            idx += 1
+        return token or None
+    return None
+
+
+def _save_stream(response: requests.Response, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("wb") as f:
+        for chunk in response.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                f.write(chunk)
+
+
+def _download_from_drive(file_id: str, dest: Path) -> None:
+    url = "https://drive.google.com/uc?export=download"
+    session = requests.Session()
+    response = session.get(url, params={"id": file_id}, stream=True, timeout=120)
+    token = _get_confirm_token(response)
+    if token:
+        response = session.get(url, params={"id": file_id, "confirm": token}, stream=True, timeout=120)
+    response.raise_for_status()
+    _save_stream(response, dest)
+
+
+def _download_from_url(url: str, dest: Path) -> None:
+    response = requests.get(url, stream=True, timeout=120)
+    response.raise_for_status()
+    _save_stream(response, dest)
+
+
+def _maybe_download_checkpoint() -> None:
+    checkpoint = MODEL_DIR / "cervical_best.pt"
+    # If any local checkpoint exists, prefer it over downloading.
+    if any(p.stat().st_size > 0 for p in MODEL_DIR.glob("*.pt")):
+        return
+    if checkpoint.exists():
+        return
+
+    file_id = _get_setting("FEMSCAN_DRIVE_FILE_ID")
+    url = _get_setting("FEMSCAN_CKPT_URL")
+    if not file_id and not url:
+        return
+
+    with st.spinner("Downloading model weights..."):
+        try:
+            if file_id:
+                _download_from_drive(file_id, checkpoint)
+            else:
+                _download_from_url(url, checkpoint)
+        except Exception as exc:
+            st.warning(f"Could not download weights: {exc}")
+
 
 def _section_header():
     st.markdown(
         """
         <div style="margin-bottom:20px;">
-            <span style="color:#9C27B0; font-size:12px; font-weight:600;
+            <span style="color:#1BAE77; font-size:12px; font-weight:600;
                           text-transform:uppercase; letter-spacing:1.5px;">Step 2 of 3</span>
-            <h2 style="color:#E8E8E8; margin:4px 0 6px; font-size:22px;">Capture &amp; Analyse</h2>
-            <p style="color:#a0a0b0; margin:0; font-size:14px;">
+            <h2 style="color:#F2F7F3; margin:4px 0 6px; font-size:22px;">Capture &amp; Analyse</h2>
+            <p style="color:#9BB3A7; margin:0; font-size:14px;">
                 Upload a cervical cytology image for CIN classification and AI attention mapping.
             </p>
         </div>
@@ -37,11 +114,26 @@ def _section_header():
     )
 
 
+def _resolve_checkpoint() -> Path | None:
+    preferred = MODEL_DIR / "cervical_best.pt"
+    if preferred.exists() and preferred.stat().st_size > 0:
+        return preferred
+
+    # Fall back to any available .pt file (most recent, non-empty)
+    candidates = [
+        p for p in MODEL_DIR.glob("*.pt")
+        if p.stat().st_size > 0
+    ]
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidates[0] if candidates else None
+
+
 def _load_model():
-    """Try to load trained model. Returns (model, explainer) or (None, None)."""
-    checkpoint = MODEL_DIR / "cervical_best.pt"
-    if not checkpoint.exists():
-        return None, None
+    """Try to load trained model. Returns (model, explainer, checkpoint_path, error)."""
+    _maybe_download_checkpoint()
+    checkpoint = _resolve_checkpoint()
+    if checkpoint is None:
+        return None, None, None, "no_checkpoint"
     try:
         import torch
         from models.cervical_classifier import CervicalClassifier
@@ -49,9 +141,9 @@ def _load_model():
         model    = CervicalClassifier(pretrained=False, checkpoint_path=str(checkpoint))
         model.eval()
         explainer = GradCAMExplainer(model)
-        return model, explainer
-    except Exception:
-        return None, None
+        return model, explainer, checkpoint, None
+    except Exception as exc:
+        return None, None, checkpoint, str(exc)
 
 
 def _preprocess(img: Image.Image):
@@ -95,7 +187,7 @@ def _demo_result() -> dict:
 def render():
     _section_header()
 
-    model, explainer = _load_model()
+    model, explainer, ckpt_path, load_error = _load_model()
     demo_mode = model is None
 
     if demo_mode:
@@ -105,6 +197,11 @@ def render():
             "to enable live inference.",
             icon="ℹ️",
         )
+        if ckpt_path is not None and load_error:
+            st.caption(f"Checkpoint found but failed to load: {ckpt_path.name} — {load_error}")
+    else:
+        if ckpt_path is not None:
+            st.caption(f"Loaded checkpoint: {ckpt_path.name}")
 
     # ── Upload ──────────────────────────────────────────────────────────────
     uploaded = st.file_uploader(
@@ -121,8 +218,8 @@ def render():
             st.caption("Showing demo cytology image.")
         else:
             st.markdown(
-                '<div style="background:#1a1a2e; border:1px dashed #3a3a5e; border-radius:12px; '
-                'padding:40px; text-align:center; color:#606070;">Upload an image above to begin analysis</div>',
+                '<div style="background:#141a1b; border:1px dashed #214236; border-radius:12px; '
+                'padding:40px; text-align:center; color:#6f857a;">Upload an image above to begin analysis</div>',
                 unsafe_allow_html=True,
             )
             # Still store empty state and return
@@ -165,26 +262,26 @@ def render():
         st.markdown('<div style="height:8px"/>', unsafe_allow_html=True)
         st.markdown(
             f"""
-            <div style="background:#1a1a2e; border-radius:12px; padding:16px 20px;">
+            <div style="background:#141a1b; border-radius:12px; padding:16px 20px; border:1px solid #1f2a25;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="color:#a0a0b0; font-size:13px;">Predicted class</span>
-                    <span style="color:#E8E8E8; font-size:13px; font-weight:600;">
+                    <span style="color:#9BB3A7; font-size:13px;">Predicted class</span>
+                    <span style="color:#F2F7F3; font-size:13px; font-weight:600;">
                         {result['class_name'].replace('im_', '')}
                     </span>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="color:#a0a0b0; font-size:13px;">Category</span>
-                    <span style="color:#E8E8E8; font-size:13px;">{result['category']}</span>
+                    <span style="color:#9BB3A7; font-size:13px;">Category</span>
+                    <span style="color:#F2F7F3; font-size:13px;">{result['category']}</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="color:#a0a0b0; font-size:13px;">Confidence</span>
+                    <span style="color:#9BB3A7; font-size:13px;">Confidence</span>
                     <span style="color:{result['color']}; font-size:13px; font-weight:700;">
                         {result['confidence']*100:.1f}%
                     </span>
                 </div>
                 <div style="display:flex; justify-content:space-between;">
-                    <span style="color:#a0a0b0; font-size:13px;">Urgency</span>
-                    <span style="color:#E8E8E8; font-size:13px; text-transform:capitalize;">
+                    <span style="color:#9BB3A7; font-size:13px;">Urgency</span>
+                    <span style="color:#F2F7F3; font-size:13px; text-transform:capitalize;">
                         {result['urgency']}
                     </span>
                 </div>
@@ -195,7 +292,7 @@ def render():
 
         st.markdown('<div style="height:8px"/>', unsafe_allow_html=True)
         st.markdown(
-            f'<p style="color:#a0a0b0; font-size:12px; font-style:italic; line-height:1.5;">'
+            f'<p style="color:#9BB3A7; font-size:12px; font-style:italic; line-height:1.5;">'
             f'{result["description"]}</p>',
             unsafe_allow_html=True,
         )
@@ -222,7 +319,7 @@ def _load_demo_overlay() -> np.ndarray | None:
 
 def _nav_buttons():
     st.markdown('<div style="height:16px"/>', unsafe_allow_html=True)
-    st.markdown('<hr style="border:none; border-top:1px solid #2a2a3e; margin:0 0 16px;">', unsafe_allow_html=True)
+    st.markdown('<hr style="border:none; border-top:1px solid #1f2a25; margin:0 0 16px;">', unsafe_allow_html=True)
     back_col, _, next_col = st.columns([1, 3, 1])
     with back_col:
         if st.button("← Back to Screening", use_container_width=True):

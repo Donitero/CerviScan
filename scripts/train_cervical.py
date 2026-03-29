@@ -61,6 +61,7 @@ DEFAULTS = dict(
     seed        = 42,
     weighted_sampler = True,
     weighted_loss    = True,
+    pretrained       = True,
 )
 
 
@@ -293,7 +294,12 @@ def main(cfg: dict):
     )
 
     # ── Model ─────────────────────────────────────────────────────────────────
-    model = CervicalClassifier(pretrained=True).to(device)
+    try:
+        model = CervicalClassifier(pretrained=cfg["pretrained"]).to(device)
+    except RuntimeError as exc:
+        # Offline environments may not have pretrained weights available.
+        print(f"[warn] {exc}. Falling back to pretrained=False.")
+        model = CervicalClassifier(pretrained=False).to(device)
 
     # ── Strategy A: class-weighted loss ──────────────────────────────────────
     if cfg["weighted_loss"]:
@@ -321,7 +327,7 @@ def main(cfg: dict):
         optimizer, T_max=cfg["epochs"]
     )
     # Old line: scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
-scaler = torch.amp.GradScaler('cuda', enabled=(device.type == "cuda"))
+    scaler = torch.amp.GradScaler("cuda", enabled=(device.type == "cuda"))
 
     best_val_acc = 0.0
     best_path    = out_dir / "cervical_best.pt"
@@ -391,5 +397,7 @@ if __name__ == "__main__":
                    action="store_false", default=DEFAULTS["weighted_sampler"])
     p.add_argument("--no-weighted-loss",    dest="weighted_loss",
                    action="store_false", default=DEFAULTS["weighted_loss"])
+    p.add_argument("--no-pretrained", dest="pretrained",
+                   action="store_false", default=DEFAULTS["pretrained"])
     args = p.parse_args()
     main(vars(args))
