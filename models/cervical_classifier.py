@@ -16,70 +16,60 @@ from typing import Dict, Any
 
 
 # ---------------------------------------------------------------------------
-# Class metadata — Bethesda classification aligned to actual dataset
-# Classes: Negative, ASC-US, LSIL, ASC-H, HSIL, ca
+# Class metadata — SIPaKMeD classification 
+# Mapped to clinical categories for Contract 2A
 # ---------------------------------------------------------------------------
 
 CLASS_META: Dict[str, Dict[str, Any]] = {
-    "Negative": {
+    "im_Superficial-Intermediate": {
         "category":     "Normal",
         "cin_grade":    "No CIN",
         "triage_color": "green",
-        "action":       "No abnormality detected. Routine screening schedule.",
+        "action":       "Normal squamous cells detected. Routine screening.",
         "urgency":      "low",
-        "description":  "Negative for intraepithelial lesion or malignancy (NILM). Normal squamous cells.",
+        "description":  "Superficial and intermediate squamous cells. Benign finding.",
         "color":        "#4CAF50",
     },
-    "ASC-US": {
-        "category":     "Borderline",
-        "cin_grade":    "Indeterminate",
-        "triage_color": "amber",
-        "action":       "Atypical cells of undetermined significance. Reflex HPV testing or repeat smear in 12 months.",
+    "im_Parabasal": {
+        "category":     "Normal/Atrophic",
+        "cin_grade":    "No CIN",
+        "triage_color": "green",
+        "action":       "Normal parabasal cells. Common in post-menopausal or atrophic smears.",
         "urgency":      "low",
-        "description":  "ASC-US: minor atypia that does not meet criteria for LSIL. Most resolve spontaneously.",
+        "description":  "Normal parabasal squamous cells. Typically benign.",
+        "color":        "#8BC34A",
+    },
+    "im_Metaplastic": {
+        "category":     "Normal/Reactive",
+        "cin_grade":    "No CIN",
+        "triage_color": "green",
+        "action":       "Benign metaplastic changes. No follow-up required.",
+        "urgency":      "low",
+        "description":  "Squamous metaplastic cells. Represents normal transformation zone activity.",
         "color":        "#CDDC39",
     },
-    "LSIL": {
+    "im_Koilocytotic": {
         "category":     "Low-grade",
-        "cin_grade":    "CIN1 (low-grade)",
+        "cin_grade":    "LSIL / CIN1",
         "triage_color": "amber",
-        "action":       "Low-grade squamous intraepithelial lesion. Repeat cytology or colposcopy in 6-12 months.",
+        "action":       "Evidence of HPV infection. Repeat cytology in 6-12 months.",
         "urgency":      "moderate",
-        "description":  "LSIL: changes consistent with HPV cytopathic effect (koilocytosis). Usually CIN1.",
+        "description":  "Koilocytes indicate HPV-related changes. Consistent with LSIL.",
         "color":        "#FF9800",
     },
-    "ASC-H": {
-        "category":     "High-grade suspect",
-        "cin_grade":    "CIN2 suspect",
-        "triage_color": "red",
-        "action":       "Atypical cells -- HSIL cannot be excluded. Colposcopy referral required.",
-        "urgency":      "high",
-        "description":  "ASC-H: atypical squamous cells where high-grade lesion cannot be excluded.",
-        "color":        "#FF5722",
-    },
-    "HSIL": {
+    "im_Dyskeratotic": {
         "category":     "High-grade",
-        "cin_grade":    "CIN2-3 (high-grade)",
+        "cin_grade":    "HSIL / CIN2-3",
         "triage_color": "red",
-        "action":       "High-grade squamous intraepithelial lesion. Urgent colposcopy and directed biopsy.",
+        "action":       "High-grade suspicion. Urgent colposcopy and biopsy required.",
         "urgency":      "high",
-        "description":  "HSIL: significant nuclear atypia consistent with CIN2 or CIN3. Requires immediate follow-up.",
+        "description":  "Dyskeratotic cells associated with high-grade dysplasia or malignancy.",
         "color":        "#F44336",
-    },
-    "ca": {
-        "category":     "Malignant",
-        "cin_grade":    "Carcinoma",
-        "triage_color": "red",
-        "action":       "Findings suspicious for carcinoma. Immediate oncology referral required.",
-        "urgency":      "high",
-        "description":  "Cells with features consistent with squamous cell carcinoma. Urgent specialist review.",
-        "color":        "#B71C1C",
     },
 }
 
-CLASS_NAMES = list(CLASS_META.keys())
+CLASS_NAMES = sorted(list(CLASS_META.keys()))
 NUM_CLASSES  = len(CLASS_NAMES)
-
 
 # ---------------------------------------------------------------------------
 # Model

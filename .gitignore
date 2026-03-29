@@ -61,3 +61,10 @@ htmlcov/
 
 # Modal
 .modal/
+
+# Raw trial data folders
+trial_*/
+
+# Large local files
+*.zip
+.claude/

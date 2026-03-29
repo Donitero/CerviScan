@@ -100,8 +100,11 @@ def build_train_transform(img_size: int) -> A.Compose:
         A.GaussianBlur(blur_limit=(3, 7), p=0.3),
         A.GaussNoise(p=0.3),
         A.CoarseDropout(
-            max_holes=6, max_height=32, max_width=32,
-            min_holes=1, fill_value=0, p=0.3,
+            num_holes_range=(1, 6), 
+            hole_height_range=(1, 32), 
+            hole_width_range=(1, 32), 
+            fill_value=0, 
+            p=0.3,
         ),
         A.Normalize(
             mean=[0.485, 0.456, 0.406],
@@ -317,7 +320,8 @@ def main(cfg: dict):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=cfg["epochs"]
     )
-    scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
+    # Old line: scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda"))
+scaler = torch.amp.GradScaler('cuda', enabled=(device.type == "cuda"))
 
     best_val_acc = 0.0
     best_path    = out_dir / "cervical_best.pt"
