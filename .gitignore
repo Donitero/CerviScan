@@ -64,3 +64,7 @@ htmlcov/
 
 # Raw trial data folders
 trial_*/
+
+# Large local files
+*.zip
+.claude/
