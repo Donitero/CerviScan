@@ -6,6 +6,8 @@ Entry point. Handles page routing and the landing hero.
 Run:
     streamlit run app.py
 """
+import utils.transport
+import utils.session
 import sys
 from pathlib import Path
 

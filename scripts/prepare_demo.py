@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from models.cervical_classifier import CLASS_NAMES, CLASS_META
 from models.hpv_risk_scorer import HPVRiskScorer
-from models.endo_scorer import EndoSymptomScorer
+from models.cancer_scorer import CancerRiskScorer
 
 DEMO_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "demo")
 
@@ -50,33 +50,31 @@ HPV_PROFILES = {
     },
 }
 
-ENDO_PROFILES = {
+CANCER_PROFILES = {
     "high": {
-        "dysmenorrhea_score": 8, "dyspareunia_score": 7, "chronic_pelvic_pain": 7,
-        "cycle_regularity": 1, "heavy_bleeding": 1, "infertility_hx": 1,
-        "family_hx": 1, "fatigue_score": 7, "bloating_score": 6,
-        "urinary_symptoms": 4, "symptom_duration_yrs": 5, "age": 33,
+        "age": 65, "family_history": 1, "previous_cancer": 1,
+        "radiation_exposure": 1, "chronic_inflammation": 1,
+        "lifestyle_score": 8, "diet_score": 2, "exercise_score": 1,
     },
     "moderate": {
-        "dysmenorrhea_score": 5, "dyspareunia_score": 4, "chronic_pelvic_pain": 4,
-        "cycle_regularity": 1, "heavy_bleeding": 1, "infertility_hx": 0,
-        "family_hx": 0, "fatigue_score": 5, "bloating_score": 4,
-        "urinary_symptoms": 2, "symptom_duration_yrs": 2, "age": 30,
+        "age": 45, "family_history": 1, "previous_cancer": 0,
+        "radiation_exposure": 0, "chronic_inflammation": 1,
+        "lifestyle_score": 5, "diet_score": 5, "exercise_score": 5,
     },
     "low": {
-        "dysmenorrhea_score": 2, "dyspareunia_score": 1, "chronic_pelvic_pain": 1,
-        "cycle_regularity": 0, "heavy_bleeding": 0, "infertility_hx": 0,
-        "family_hx": 0, "fatigue_score": 2, "bloating_score": 1,
-        "urinary_symptoms": 0, "symptom_duration_yrs": 0.5, "age": 24,
+        "age": 28, "family_history": 0, "previous_cancer": 0,
+        "radiation_exposure": 0, "chronic_inflammation": 0,
+        "lifestyle_score": 2, "diet_score": 8, "exercise_score": 8,
     },
 }
 
+# Map CLASS_NAMES (im_-prefixed) to display colours for synthetic images
 CELL_COLOURS = {
-    "Superficial-Intermediate": (180, 220, 180),
-    "Parabasal":               (160, 200, 160),
-    "Koilocyte":               (220, 180, 100),
-    "Dyskeratocyte":           (220, 140,  80),
-    "Metaplastic":             (220,  80,  80),
+    "im_Superficial-Intermediate": (180, 220, 180),
+    "im_Parabasal":                (160, 200, 160),
+    "im_Koilocytotic":             (220, 180, 100),
+    "im_Dyskeratotic":             (220, 140,  80),
+    "im_Metaplastic":              (220,  80,  80),
 }
 
 
@@ -112,10 +110,10 @@ def _gradcam_overlay(class_name: str, size: int = 224) -> np.ndarray:
 def main(model_dir: str) -> None:
     os.makedirs(DEMO_DIR, exist_ok=True)
 
-    hpv_scorer  = HPVRiskScorer()   # heuristic mode
-    endo_scorer = EndoSymptomScorer()
+    hpv_scorer    = HPVRiskScorer()       # heuristic mode
+    cancer_scorer = CancerRiskScorer()    # heuristic mode
 
-    manifest: dict = {"cervical": [], "hpv": [], "endo": []}
+    manifest: dict = {"cervical": [], "hpv": [], "cancer": []}
 
     # Cervical images
     for cls in CLASS_NAMES:
@@ -160,26 +158,26 @@ def main(model_dir: str) -> None:
             "result_path":   f"data/demo/demo_hpv_{level}.json",
             "predict_result": result,
         })
-        print(f"[hpv] {level} → score={result['hpv_risk_score']}")
+        print(f"[hpv] {level} -> score={result['hpv_risk_score']}")
 
-    # Endo JSONs
-    for level, profile in ENDO_PROFILES.items():
-        result = endo_scorer.predict(profile)
-        path   = os.path.join(DEMO_DIR, f"demo_endo_{level}.json")
+    # Cancer JSONs
+    for level, profile in CANCER_PROFILES.items():
+        result = cancer_scorer.predict(profile)
+        path   = os.path.join(DEMO_DIR, f"demo_cancer_{level}.json")
         with open(path, "w") as f:
             json.dump(result, f, indent=2)
-        manifest["endo"].append({
+        manifest["cancer"].append({
             "risk_level":    result["risk_level"],
-            "result_path":   f"data/demo/demo_endo_{level}.json",
+            "result_path":   f"data/demo/demo_cancer_{level}.json",
             "predict_result": result,
         })
-        print(f"[endo] {level} → score={result['risk_score']}")
+        print(f"[cancer] {level} -> score={result['risk_score']}")
 
     # Manifest
     manifest_path = os.path.join(DEMO_DIR, "demo_manifest.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
-    print(f"\nManifest → {manifest_path}")
+    print(f"\nManifest -> {manifest_path}")
     print("Demo assets ready.")
 
 

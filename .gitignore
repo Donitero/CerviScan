@@ -15,10 +15,8 @@ venv/
 env/
 .venv/
 .env/
-.env
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *~
@@ -68,3 +66,5 @@ trial_*/
 # Large local files
 *.zip
 .claude/
+config.bat
+node_modules

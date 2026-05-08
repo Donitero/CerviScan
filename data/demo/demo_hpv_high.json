@@ -1,0 +1,35 @@
+{
+  "hpv_risk_score": 46.0,
+  "risk_level": "Medium",
+  "risk_color": "#FF9800",
+  "escalate_to_imaging": false,
+  "top_risk_factors": [
+    {
+      "factor": "Age at first sexual intercourse",
+      "impact": 10.0,
+      "direction": "increases_risk"
+    },
+    {
+      "factor": "Smoking (0=No, 1=Yes)",
+      "impact": 10.0,
+      "direction": "increases_risk"
+    },
+    {
+      "factor": "Number of sexual partners",
+      "impact": 8.0,
+      "direction": "decreases_risk"
+    },
+    {
+      "factor": "Previous cervical biopsies (0/1)",
+      "impact": 7.0,
+      "direction": "increases_risk"
+    },
+    {
+      "factor": "Number of prior STDs",
+      "impact": 5.4,
+      "direction": "decreases_risk"
+    }
+  ],
+  "recommendation": "Moderate HPV risk factors identified. Schedule a Pap smear / HPV co-test within 6 months and discuss vaccination.",
+  "hpv_strain_risk": "Intermediate \u2014 mixed strain risk"
+}
